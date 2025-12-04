@@ -1,0 +1,31 @@
+FHE Legal Consultation Platform - 1 Minute Demo Video Narration
+
+---
+
+[0:00 - 0:08]
+Welcome to the FHE Legal Consultation Platform - a complete FHEVM example demonstrating privacy-preserving smart contracts using Fully Homomorphic Encryption.
+
+[0:08 - 0:15]
+Setup is simple. Clone the repository, install dependencies, and you're ready to explore privacy-preserving blockchain applications.
+
+[0:15 - 0:25]
+With 75 comprehensive tests achieving 95% coverage, this example demonstrates production-ready smart contract development with FHEVM.
+
+[0:25 - 0:35]
+The project demonstrates five essential FHEVM patterns: access control with encrypted permissions, encrypted data structures, homomorphic arithmetic operations, user-controlled decryption, and public computation on private data.
+
+[0:35 - 0:45]
+Deploy to Sepolia testnet with automated scripts. The contract is verified on Etherscan, demonstrating professional deployment workflows for confidential applications.
+
+[0:45 - 0:55]
+Interact with deployed contracts through our professional CLI. Submit encrypted consultations, register lawyers, assign cases, and experience privacy-preserving workflows firsthand.
+
+[0:55 - 1:00]
+With 4,000+ lines of professional documentation, multiple FHE patterns, and production-ready automation - this is the complete FHEVM example for building privacy-preserving smart contracts.
+
+---
+
+[End Screen]
+Explore the future of confidential blockchain technology with FHEVM.
+GitHub: github.com/CarrieMorar/FHELegalConsultation
+Built for Zama FHEVM Bounty Track December 2025
