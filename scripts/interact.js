@@ -1,243 +1,347 @@
 const hre = require("hardhat");
 const fs = require("fs");
 const path = require("path");
+const readline = require("readline");
 
-async function main() {
-  console.log("\n==================================================");
-  console.log("  Contract Interaction Script");
-  console.log("==================================================\n");
+/**
+ * Interactive script for AnonymousLegalConsultation Contract
+ *
+ * This script provides an interactive CLI to interact with
+ * the deployed contract's functions.
+ */
 
-  const network = hre.network.name;
-  const [owner, trader1, trader2] = await hre.ethers.getSigners();
+// Create readline interface
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
 
-  console.log("Interaction Information:");
-  console.log("- Network:", network);
-  console.log("- Owner address:", owner.address);
-  console.log("- Trader 1 address:", trader1.address);
-  console.log("- Trader 2 address:", trader2.address);
-  console.log("\n--------------------------------------------------\n");
-
-  // Load deployment information
-  const deploymentFile = path.join(__dirname, "..", "deployments", `${network}-deployment.json`);
-
-  let contractAddress;
-
-  if (fs.existsSync(deploymentFile)) {
-    const deployment = JSON.parse(fs.readFileSync(deploymentFile, "utf8"));
-    contractAddress = deployment.contractAddress;
-    console.log("📄 Loaded contract from deployment file");
-    console.log("- Contract address:", contractAddress);
-  } else {
-    console.error("❌ Deployment file not found");
-    console.log("💡 Please deploy the contract first:");
-    console.log("   npm run deploy");
-    return;
-  }
-
-  // Get contract instance
-  const ConfidentialFuturesTrading = await hre.ethers.getContractFactory("ConfidentialFuturesTrading");
-  const contract = ConfidentialFuturesTrading.attach(contractAddress);
-
-  console.log("\n==================================================");
-  console.log("  1. Query Contract Owner");
-  console.log("==================================================\n");
-
-  try {
-    const contractOwner = await contract.owner();
-    console.log("✅ Contract owner:", contractOwner);
-    console.log("- Is deployer:", contractOwner.toLowerCase() === owner.address.toLowerCase());
-  } catch (error) {
-    console.error("❌ Error querying owner:", error.message);
-  }
-
-  console.log("\n==================================================");
-  console.log("  2. Create Futures Contract");
-  console.log("==================================================\n");
-
-  try {
-    console.log("📝 Creating BTC futures contract...");
-    const tx1 = await contract.createFuturesContract("BTC");
-    const receipt1 = await tx1.wait();
-
-    console.log("✅ BTC contract created");
-    console.log("- Transaction hash:", tx1.hash);
-    console.log("- Gas used:", receipt1.gasUsed.toString());
-
-    // Extract contract ID from event
-    const event = receipt1.logs.find(log => {
-      try {
-        const parsed = contract.interface.parseLog(log);
-        return parsed.name === "ContractCreated";
-      } catch {
-        return false;
-      }
-    });
-
-    if (event) {
-      const parsedEvent = contract.interface.parseLog(event);
-      const contractId = parsedEvent.args.contractId;
-      console.log("- Contract ID:", contractId.toString());
-
-      console.log("\n📝 Creating ETH futures contract...");
-      const tx2 = await contract.createFuturesContract("ETH");
-      const receipt2 = await tx2.wait();
-
-      console.log("✅ ETH contract created");
-      console.log("- Transaction hash:", tx2.hash);
-      console.log("- Gas used:", receipt2.gasUsed.toString());
-    }
-  } catch (error) {
-    console.error("❌ Error creating contract:", error.message);
-  }
-
-  console.log("\n==================================================");
-  console.log("  3. Set Initial Prices");
-  console.log("==================================================\n");
-
-  try {
-    console.log("💰 Setting BTC price to 50000...");
-    const tx3 = await contract.setContractPrice(1, 50000);
-    await tx3.wait();
-    console.log("✅ BTC price set");
-    console.log("- Transaction hash:", tx3.hash);
-
-    console.log("\n💰 Setting ETH price to 3000...");
-    const tx4 = await contract.setContractPrice(2, 3000);
-    await tx4.wait();
-    console.log("✅ ETH price set");
-    console.log("- Transaction hash:", tx4.hash);
-  } catch (error) {
-    console.error("❌ Error setting prices:", error.message);
-  }
-
-  console.log("\n==================================================");
-  console.log("  4. Query Contract Information");
-  console.log("==================================================\n");
-
-  try {
-    const btcInfo = await contract.getContractInfo(1);
-    console.log("📊 BTC Contract (ID: 1):");
-    console.log("- Price set:", btcInfo.priceSet);
-    console.log("- Settled:", btcInfo.settled);
-    console.log("- Underlying:", btcInfo.underlying);
-    console.log("- Creation time:", new Date(Number(btcInfo.creationTime) * 1000).toLocaleString());
-    console.log("- Expiry time:", new Date(Number(btcInfo.expiryTime) * 1000).toLocaleString());
-    console.log("- Trader count:", btcInfo.traderCount.toString());
-
-    const ethInfo = await contract.getContractInfo(2);
-    console.log("\n📊 ETH Contract (ID: 2):");
-    console.log("- Price set:", ethInfo.priceSet);
-    console.log("- Settled:", ethInfo.settled);
-    console.log("- Underlying:", ethInfo.underlying);
-    console.log("- Creation time:", new Date(Number(ethInfo.creationTime) * 1000).toLocaleString());
-    console.log("- Expiry time:", new Date(Number(ethInfo.expiryTime) * 1000).toLocaleString());
-    console.log("- Trader count:", ethInfo.traderCount.toString());
-  } catch (error) {
-    console.error("❌ Error querying contract info:", error.message);
-  }
-
-  console.log("\n==================================================");
-  console.log("  5. Check Active Contracts");
-  console.log("==================================================\n");
-
-  try {
-    const activeCount = await contract.getActiveContractsCount();
-    console.log("📈 Total active contracts:", activeCount.toString());
-
-    const btcActive = await contract.isContractActive(1);
-    console.log("- BTC contract active:", btcActive);
-
-    const ethActive = await contract.isContractActive(2);
-    console.log("- ETH contract active:", ethActive);
-  } catch (error) {
-    console.error("❌ Error checking active contracts:", error.message);
-  }
-
-  console.log("\n==================================================");
-  console.log("  6. Check Settlement Time");
-  console.log("==================================================\n");
-
-  try {
-    const timeToSettlement = await contract.getTimeToNextSettlement();
-    const hours = Math.floor(Number(timeToSettlement) / 3600);
-    const minutes = Math.floor((Number(timeToSettlement) % 3600) / 60);
-    const seconds = Number(timeToSettlement) % 60;
-
-    console.log("⏰ Time to next settlement:");
-    console.log(`   ${hours}h ${minutes}m ${seconds}s`);
-
-    const isSettlementTime = await contract.isSettlementTime();
-    console.log("- Can settle now:", isSettlementTime);
-  } catch (error) {
-    console.error("❌ Error checking settlement time:", error.message);
-  }
-
-  console.log("\n==================================================");
-  console.log("  7. Open Trading Position (Trader 1)");
-  console.log("==================================================\n");
-
-  try {
-    console.log("🔓 Opening long position on BTC...");
-    console.log("- Entry price: 50500");
-    console.log("- Amount: 100");
-    console.log("- Collateral: 5000");
-
-    const traderContract = contract.connect(trader1);
-    const tx5 = await traderContract.openPosition(
-      1,      // contractId: BTC
-      50500,  // entryPrice
-      100,    // amount
-      5000,   // collateral
-      true    // isLong
-    );
-    const receipt5 = await tx5.wait();
-
-    console.log("✅ Position opened");
-    console.log("- Transaction hash:", tx5.hash);
-    console.log("- Gas used:", receipt5.gasUsed.toString());
-  } catch (error) {
-    console.error("❌ Error opening position:", error.message);
-  }
-
-  console.log("\n==================================================");
-  console.log("  8. Query Trader Position");
-  console.log("==================================================\n");
-
-  try {
-    const positionStatus = await contract.getTraderPositionStatus(1, trader1.address);
-    console.log("📊 Trader 1 position on BTC:");
-    console.log("- Has position:", positionStatus.hasPosition);
-    console.log("- Is long:", positionStatus.isLong);
-    console.log("- Entry time:", new Date(Number(positionStatus.entryTime) * 1000).toLocaleString());
-
-    // Check updated trader count
-    const updatedInfo = await contract.getContractInfo(1);
-    console.log("\n📈 Updated BTC contract:");
-    console.log("- Trader count:", updatedInfo.traderCount.toString());
-  } catch (error) {
-    console.error("❌ Error querying position:", error.message);
-  }
-
-  console.log("\n==================================================");
-  console.log("  Interaction Summary");
-  console.log("==================================================");
-  console.log("\n✅ All interactions completed successfully!");
-  console.log("\n💡 Next steps:");
-  console.log("   1. Run simulation to test settlement:");
-  console.log("      npm run simulate");
-  console.log("   2. View contract on Etherscan (Sepolia):");
-  if (network === "sepolia") {
-    console.log(`      https://sepolia.etherscan.io/address/${contractAddress}`);
-  }
-  console.log("\n==================================================\n");
+// Helper function to ask questions
+function question(query) {
+  return new Promise((resolve) => rl.question(query, resolve));
 }
 
+// Legal categories mapping
+const LEGAL_CATEGORIES = {
+  1: "Civil Law",
+  2: "Criminal Law",
+  3: "Family Law",
+  4: "Corporate Law",
+  5: "Employment Law",
+  6: "Real Estate Law",
+  7: "Immigration Law",
+  8: "Tax Law",
+};
+
+/**
+ * Load deployed contract
+ */
+async function loadContract() {
+  const network = hre.network.name;
+  const deploymentsDir = path.join(__dirname, "..", "deployments");
+  const deploymentPath = path.join(
+    deploymentsDir,
+    `${network}-deployment.json`
+  );
+
+  if (!fs.existsSync(deploymentPath)) {
+    throw new Error(
+      `❌ Deployment file not found for network: ${network}\n` +
+        `   Please deploy the contract first using:\n` +
+        `   npx hardhat run scripts/deploy.js --network ${network}`
+    );
+  }
+
+  const deploymentInfo = JSON.parse(fs.readFileSync(deploymentPath, "utf8"));
+  const contractAddress = deploymentInfo.contractAddress;
+
+  const contract = await hre.ethers.getContractAt(
+    "AnonymousLegalConsultation",
+    contractAddress
+  );
+
+  return { contract, contractAddress, network };
+}
+
+/**
+ * Display contract information
+ */
+async function displayContractInfo(contract, contractAddress, network) {
+  console.log("\n📋 Contract Information:");
+  console.log("─".repeat(60));
+  console.log(`Network:          ${network}`);
+  console.log(`Contract Address: ${contractAddress}`);
+
+  const admin = await contract.admin();
+  const stats = await contract.getSystemStats();
+
+  console.log(`Admin:            ${admin}`);
+  console.log(`Total Consultations: ${stats[0]}`);
+  console.log(`Total Lawyers:       ${stats[1]}`);
+  console.log(`Verified Lawyers:    ${stats[2]}`);
+  console.log("─".repeat(60));
+}
+
+/**
+ * Display menu options
+ */
+function displayMenu() {
+  console.log("\n🔧 Available Actions:");
+  console.log("─".repeat(60));
+  console.log("1.  Submit Consultation (Client)");
+  console.log("2.  Register as Lawyer");
+  console.log("3.  Get Consultation Details");
+  console.log("4.  Get Lawyer Profile");
+  console.log("5.  Get Client Statistics");
+  console.log("6.  View Legal Categories");
+  console.log("7.  Check Lawyer Registration Status");
+  console.log("8.  Get System Statistics");
+  console.log("");
+  console.log("Admin Functions:");
+  console.log("9.  Assign Consultation to Lawyer");
+  console.log("10. Verify Lawyer");
+  console.log("11. Update Lawyer Rating");
+  console.log("12. Deactivate Lawyer");
+  console.log("13. Withdraw Fees");
+  console.log("");
+  console.log("0.  Exit");
+  console.log("─".repeat(60));
+}
+
+/**
+ * Submit consultation
+ */
+async function submitConsultation(contract, signer) {
+  console.log("\n📝 Submit Legal Consultation");
+  console.log("─".repeat(60));
+
+  // Display categories
+  console.log("Legal Categories:");
+  for (const [id, name] of Object.entries(LEGAL_CATEGORIES)) {
+    console.log(`  ${id}. ${name}`);
+  }
+
+  const clientId = await question("\nEnter Client ID (anonymous): ");
+  const categoryId = await question("Select Legal Category (1-8): ");
+  const question_text = await question("Enter Encrypted Question: ");
+  const fee = await question("Enter Consultation Fee (ETH, min 0.001): ");
+
+  console.log("\n⏳ Submitting consultation...");
+
+  try {
+    const tx = await contract
+      .connect(signer)
+      .submitConsultation(clientId, categoryId, question_text, {
+        value: hre.ethers.parseEther(fee),
+      });
+
+    console.log(`Transaction Hash: ${tx.hash}`);
+    console.log("Waiting for confirmation...");
+
+    const receipt = await tx.wait();
+    console.log(`✅ Consultation submitted! (Block: ${receipt.blockNumber})`);
+
+    // Get consultation ID from event
+    const event = receipt.logs.find(
+      (log) => log.fragment && log.fragment.name === "ConsultationSubmitted"
+    );
+    if (event) {
+      console.log(`📋 Consultation ID: ${event.args[0]}`);
+    }
+  } catch (error) {
+    console.error("❌ Error submitting consultation:", error.message);
+  }
+}
+
+/**
+ * Register as lawyer
+ */
+async function registerLawyer(contract, signer) {
+  console.log("\n⚖️  Register as Lawyer");
+  console.log("─".repeat(60));
+
+  // Display specialties
+  console.log("Legal Specialties:");
+  for (const [id, name] of Object.entries(LEGAL_CATEGORIES)) {
+    console.log(`  ${id}. ${name}`);
+  }
+
+  const specialty = await question("\nSelect Your Specialty (1-8): ");
+
+  console.log("\n⏳ Registering lawyer...");
+
+  try {
+    const tx = await contract.connect(signer).registerLawyer(specialty);
+    console.log(`Transaction Hash: ${tx.hash}`);
+    console.log("Waiting for confirmation...");
+
+    const receipt = await tx.wait();
+    console.log(`✅ Lawyer registered! (Block: ${receipt.blockNumber})`);
+
+    // Get lawyer ID from event
+    const event = receipt.logs.find(
+      (log) => log.fragment && log.fragment.name === "LawyerRegistered"
+    );
+    if (event) {
+      console.log(`👨‍⚖️ Lawyer ID: ${event.args[0]}`);
+    }
+  } catch (error) {
+    console.error("❌ Error registering lawyer:", error.message);
+  }
+}
+
+/**
+ * Get consultation details
+ */
+async function getConsultationDetails(contract) {
+  console.log("\n📄 Get Consultation Details");
+  console.log("─".repeat(60));
+
+  const consultationId = await question("Enter Consultation ID: ");
+
+  try {
+    const details = await contract.getConsultationDetails(consultationId);
+
+    console.log("\n📋 Consultation Details:");
+    console.log("─".repeat(60));
+    console.log(`Encrypted Question: ${details[0]}`);
+    console.log(`Encrypted Response: ${details[1] || "Not yet answered"}`);
+    console.log(`Timestamp:          ${new Date(Number(details[2]) * 1000).toLocaleString()}`);
+    console.log(`Fee:                ${hre.ethers.formatEther(details[3])} ETH`);
+    console.log(`Resolved:           ${details[4] ? "Yes" : "No"}`);
+    console.log(`Paid:               ${details[5] ? "Yes" : "No"}`);
+    console.log("─".repeat(60));
+  } catch (error) {
+    console.error("❌ Error getting consultation:", error.message);
+  }
+}
+
+/**
+ * Get lawyer profile
+ */
+async function getLawyerProfile(contract) {
+  console.log("\n👨‍⚖️ Get Lawyer Profile");
+  console.log("─".repeat(60));
+
+  const lawyerId = await question("Enter Lawyer ID: ");
+
+  try {
+    const profile = await contract.getLawyerProfile(lawyerId);
+
+    console.log("\n📋 Lawyer Profile:");
+    console.log("─".repeat(60));
+    console.log(`Consultation Count: ${profile[0]}`);
+    console.log(`Verified:           ${profile[1] ? "Yes ✅" : "No ❌"}`);
+    console.log(`Active:             ${profile[2] ? "Yes ✅" : "No ❌"}`);
+    console.log("─".repeat(60));
+  } catch (error) {
+    console.error("❌ Error getting lawyer profile:", error.message);
+  }
+}
+
+/**
+ * Get client statistics
+ */
+async function getClientStats(contract) {
+  console.log("\n📊 Get Client Statistics");
+  console.log("─".repeat(60));
+
+  const clientAddress = await question("Enter Client Address: ");
+
+  try {
+    const stats = await contract.getClientStats(clientAddress);
+
+    console.log("\n📋 Client Statistics:");
+    console.log("─".repeat(60));
+    console.log(`Total Consultations: ${stats[0]}`);
+    console.log(`Total Spent:         ${hre.ethers.formatEther(stats[1])} ETH`);
+    console.log("─".repeat(60));
+  } catch (error) {
+    console.error("❌ Error getting client stats:", error.message);
+  }
+}
+
+/**
+ * View legal categories
+ */
+async function viewLegalCategories(contract) {
+  console.log("\n📚 Legal Categories");
+  console.log("─".repeat(60));
+
+  for (let i = 1; i <= 8; i++) {
+    try {
+      const category = await contract.getLegalCategory(i);
+      console.log(`${i}. ${category}`);
+    } catch (error) {
+      console.error(`Error getting category ${i}:`, error.message);
+    }
+  }
+
+  console.log("─".repeat(60));
+}
+
+/**
+ * Main interaction loop
+ */
+async function main() {
+  console.log("🚀 AnonymousLegalConsultation Interactive CLI\n");
+
+  try {
+    const { contract, contractAddress, network } = await loadContract();
+    const [signer] = await hre.ethers.getSigners();
+
+    console.log(`Connected Account: ${signer.address}`);
+    await displayContractInfo(contract, contractAddress, network);
+
+    let running = true;
+
+    while (running) {
+      displayMenu();
+      const choice = await question("\nSelect an action: ");
+
+      switch (choice) {
+        case "1":
+          await submitConsultation(contract, signer);
+          break;
+        case "2":
+          await registerLawyer(contract, signer);
+          break;
+        case "3":
+          await getConsultationDetails(contract);
+          break;
+        case "4":
+          await getLawyerProfile(contract);
+          break;
+        case "5":
+          await getClientStats(contract);
+          break;
+        case "6":
+          await viewLegalCategories(contract);
+          break;
+        case "8":
+          await displayContractInfo(contract, contractAddress, network);
+          break;
+        case "0":
+          running = false;
+          console.log("\n👋 Goodbye!");
+          break;
+        default:
+          console.log("❌ Invalid choice. Please try again.");
+      }
+    }
+
+    rl.close();
+  } catch (error) {
+    console.error("❌ Error:", error.message);
+    rl.close();
+    process.exit(1);
+  }
+}
+
+// Execute interactive CLI
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("\n❌ Interaction script failed:");
     console.error(error);
     process.exit(1);
   });
-
-module.exports = main;

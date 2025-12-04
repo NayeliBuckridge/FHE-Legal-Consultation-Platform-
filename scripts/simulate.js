@@ -2,247 +2,362 @@ const hre = require("hardhat");
 const fs = require("fs");
 const path = require("path");
 
-async function main() {
-  console.log("\n==================================================");
-  console.log("  Futures Trading Simulation");
-  console.log("==================================================\n");
+/**
+ * Simulate complete workflow for AnonymousLegalConsultation
+ *
+ * This script simulates a complete legal consultation workflow:
+ * 1. Deploy contract
+ * 2. Register lawyers
+ * 3. Submit consultations
+ * 4. Assign consultations
+ * 5. Provide responses
+ */
 
-  const network = hre.network.name;
-  const [owner, trader1, trader2, trader3] = await hre.ethers.getSigners();
+// Legal categories
+const LEGAL_CATEGORIES = {
+  1: "Civil Law",
+  2: "Criminal Law",
+  3: "Family Law",
+  4: "Corporate Law",
+  5: "Employment Law",
+  6: "Real Estate Law",
+  7: "Immigration Law",
+  8: "Tax Law",
+};
 
-  console.log("Simulation Setup:");
-  console.log("- Network:", network);
-  console.log("- Owner:", owner.address);
-  console.log("- Trader 1:", trader1.address);
-  console.log("- Trader 2:", trader2.address);
-  console.log("- Trader 3:", trader3.address);
-  console.log("\n--------------------------------------------------\n");
+// Sample consultation data
+const SAMPLE_CONSULTATIONS = [
+  {
+    clientId: 10001,
+    categoryId: 1,
+    question:
+      "I need advice about a contract dispute with my landlord regarding early termination.",
+    fee: "0.002",
+  },
+  {
+    clientId: 10002,
+    categoryId: 3,
+    question:
+      "What are my rights in a divorce proceeding with shared property?",
+    fee: "0.003",
+  },
+  {
+    clientId: 10003,
+    categoryId: 5,
+    question:
+      "My employer terminated my contract without notice. What are my options?",
+    fee: "0.0015",
+  },
+  {
+    clientId: 10004,
+    categoryId: 4,
+    question: "I need guidance on incorporating a startup and equity distribution.",
+    fee: "0.005",
+  },
+  {
+    clientId: 10005,
+    categoryId: 2,
+    question: "I was charged with a misdemeanor. What should I expect in court?",
+    fee: "0.004",
+  },
+];
 
-  // Load or deploy contract
-  let contractAddress;
-  const deploymentFile = path.join(__dirname, "..", "deployments", `${network}-deployment.json`);
+// Sample lawyer data
+const SAMPLE_LAWYERS = [
+  { specialty: 1, name: "Civil Law Specialist" },
+  { specialty: 2, name: "Criminal Defense Attorney" },
+  { specialty: 3, name: "Family Law Expert" },
+  { specialty: 4, name: "Corporate Lawyer" },
+  { specialty: 5, name: "Employment Law Attorney" },
+];
 
-  if (fs.existsSync(deploymentFile)) {
-    const deployment = JSON.parse(fs.readFileSync(deploymentFile, "utf8"));
-    contractAddress = deployment.contractAddress;
-    console.log("📄 Using existing deployment");
-    console.log("- Contract address:", contractAddress);
-  } else {
-    console.log("🚀 Deploying new contract for simulation...");
-    const ConfidentialFuturesTrading = await hre.ethers.getContractFactory("ConfidentialFuturesTrading");
-    const contract = await ConfidentialFuturesTrading.deploy();
-    await contract.waitForDeployment();
-    contractAddress = await contract.getAddress();
-    console.log("✅ Contract deployed:", contractAddress);
-  }
-
-  const ConfidentialFuturesTrading = await hre.ethers.getContractFactory("ConfidentialFuturesTrading");
-  const contract = ConfidentialFuturesTrading.attach(contractAddress);
-
-  console.log("\n==================================================");
-  console.log("  SCENARIO 1: Create Multiple Futures Contracts");
-  console.log("==================================================\n");
-
-  const assets = ["BTC", "ETH", "GOLD", "OIL"];
-  const initialPrices = [50000, 3000, 2000, 80];
-  const contractIds = [];
-
-  for (let i = 0; i < assets.length; i++) {
-    console.log(`📝 Creating ${assets[i]} futures contract...`);
-    const tx = await contract.createFuturesContract(assets[i]);
-    const receipt = await tx.wait();
-
-    // Parse event to get contract ID
-    const event = receipt.logs.find(log => {
-      try {
-        const parsed = contract.interface.parseLog(log);
-        return parsed.name === "ContractCreated";
-      } catch {
-        return false;
-      }
-    });
-
-    if (event) {
-      const parsedEvent = contract.interface.parseLog(event);
-      const contractId = parsedEvent.args.contractId;
-      contractIds.push(contractId);
-      console.log(`✅ ${assets[i]} contract created (ID: ${contractId})`);
-    }
-
-    // Set initial price
-    console.log(`💰 Setting ${assets[i]} initial price: ${initialPrices[i]}`);
-    const priceTx = await contract.setContractPrice(contractIds[i], initialPrices[i]);
-    await priceTx.wait();
-    console.log(`✅ Price set\n`);
-  }
-
-  console.log("==================================================");
-  console.log("  SCENARIO 2: Multiple Traders Open Positions");
-  console.log("==================================================\n");
-
-  // Trader 1: Long BTC
-  console.log("👤 Trader 1 - Opening LONG position on BTC");
-  console.log("   Entry: 50200 | Amount: 100 | Collateral: 5000");
-  const trader1Contract = contract.connect(trader1);
-  let tx = await trader1Contract.openPosition(contractIds[0], 50200, 100, 5000, true);
-  await tx.wait();
-  console.log("   ✅ Position opened\n");
-
-  // Trader 2: Short BTC
-  console.log("👤 Trader 2 - Opening SHORT position on BTC");
-  console.log("   Entry: 49800 | Amount: 150 | Collateral: 7500");
-  const trader2Contract = contract.connect(trader2);
-  tx = await trader2Contract.openPosition(contractIds[0], 49800, 150, 7500, false);
-  await tx.wait();
-  console.log("   ✅ Position opened\n");
-
-  // Trader 3: Long ETH
-  console.log("👤 Trader 3 - Opening LONG position on ETH");
-  console.log("   Entry: 3050 | Amount: 200 | Collateral: 6000");
-  const trader3Contract = contract.connect(trader3);
-  tx = await trader3Contract.openPosition(contractIds[1], 3050, 200, 6000, true);
-  await tx.wait();
-  console.log("   ✅ Position opened\n");
-
-  // Trader 1: Long GOLD
-  console.log("👤 Trader 1 - Opening LONG position on GOLD");
-  console.log("   Entry: 2020 | Amount: 50 | Collateral: 2000");
-  tx = await trader1Contract.openPosition(contractIds[2], 2020, 50, 2000, true);
-  await tx.wait();
-  console.log("   ✅ Position opened\n");
-
-  console.log("==================================================");
-  console.log("  SCENARIO 3: Query Contract Statistics");
-  console.log("==================================================\n");
-
-  for (let i = 0; i < contractIds.length; i++) {
-    const info = await contract.getContractInfo(contractIds[i]);
-    console.log(`📊 ${assets[i]} Contract (ID: ${contractIds[i]})`);
-    console.log(`   - Underlying: ${info.underlying}`);
-    console.log(`   - Active traders: ${info.traderCount}`);
-    console.log(`   - Price set: ${info.priceSet}`);
-    console.log(`   - Settled: ${info.settled}`);
-    console.log(`   - Active: ${await contract.isContractActive(contractIds[i])}`);
-    console.log();
-  }
-
-  const activeCount = await contract.getActiveContractsCount();
-  console.log(`📈 Total active contracts: ${activeCount}\n`);
-
-  console.log("==================================================");
-  console.log("  SCENARIO 4: Check Trader Positions");
-  console.log("==================================================\n");
-
-  // Check Trader 1 positions
-  console.log("👤 Trader 1 Positions:");
-  let pos1 = await contract.getTraderPositionStatus(contractIds[0], trader1.address);
-  console.log(`   - BTC: ${pos1.hasPosition ? (pos1.isLong ? "LONG" : "SHORT") : "No position"}`);
-
-  let pos2 = await contract.getTraderPositionStatus(contractIds[2], trader1.address);
-  console.log(`   - GOLD: ${pos2.hasPosition ? (pos2.isLong ? "LONG" : "SHORT") : "No position"}`);
-  console.log();
-
-  // Check Trader 2 positions
-  console.log("👤 Trader 2 Positions:");
-  pos1 = await contract.getTraderPositionStatus(contractIds[0], trader2.address);
-  console.log(`   - BTC: ${pos1.hasPosition ? (pos1.isLong ? "LONG" : "SHORT") : "No position"}`);
-  console.log();
-
-  // Check Trader 3 positions
-  console.log("👤 Trader 3 Positions:");
-  pos1 = await contract.getTraderPositionStatus(contractIds[1], trader3.address);
-  console.log(`   - ETH: ${pos1.hasPosition ? (pos1.isLong ? "LONG" : "SHORT") : "No position"}`);
-  console.log();
-
-  console.log("==================================================");
-  console.log("  SCENARIO 5: Settlement Time Analysis");
-  console.log("==================================================\n");
-
-  const timeToSettlement = await contract.getTimeToNextSettlement();
-  const hours = Math.floor(Number(timeToSettlement) / 3600);
-  const minutes = Math.floor((Number(timeToSettlement) % 3600) / 60);
-  const seconds = Number(timeToSettlement) % 60;
-
-  console.log("⏰ Settlement Information:");
-  console.log(`   - Time to next settlement: ${hours}h ${minutes}m ${seconds}s`);
-  console.log(`   - Can settle now: ${await contract.isSettlementTime()}`);
-  console.log();
-
-  console.log("==================================================");
-  console.log("  SCENARIO 6: Time Travel (Local Network Only)");
-  console.log("==================================================\n");
-
-  if (network === "hardhat" || network === "localhost") {
-    console.log("⏩ Fast-forwarding time by 4 hours...");
-    await hre.network.provider.send("evm_increaseTime", [4 * 3600]);
-    await hre.network.provider.send("evm_mine");
-
-    const newTimeToSettlement = await contract.getTimeToNextSettlement();
-    console.log(`✅ Time advanced`);
-    console.log(`   - Can settle now: ${await contract.isSettlementTime()}`);
-    console.log();
-  } else {
-    console.log("⚠️  Time travel only available on local networks");
-    console.log("   Skipping this scenario\n");
-  }
-
-  console.log("==================================================");
-  console.log("  SCENARIO 7: Settlement Simulation");
-  console.log("==================================================\n");
-
-  if (network === "hardhat" || network === "localhost") {
-    console.log("💵 Settling BTC contract with final price: 51000");
-    const settleTx = await contract.settleContract(contractIds[0], 51000);
-    const settleReceipt = await settleTx.wait();
-    console.log("✅ Settlement transaction submitted");
-    console.log(`   - Gas used: ${settleReceipt.gasUsed}\n`);
-
-    // Check if contract is settled
-    const btcInfo = await contract.getContractInfo(contractIds[0]);
-    console.log("📊 BTC Contract Status:");
-    console.log(`   - Settled: ${btcInfo.settled}`);
-    console.log();
-  } else {
-    console.log("⚠️  Settlement requires settlement time");
-    console.log("   Use local network for full simulation\n");
-  }
-
-  console.log("==================================================");
-  console.log("  Simulation Complete");
-  console.log("==================================================\n");
-
-  console.log("📊 Summary Statistics:");
-  console.log(`   - Total contracts created: ${assets.length}`);
-  console.log(`   - Total positions opened: 4`);
-  console.log(`   - Active contracts: ${await contract.getActiveContractsCount()}`);
-  console.log(`   - Unique traders: 3`);
-  console.log();
-
-  console.log("✅ All simulation scenarios completed!");
-  console.log("\n💡 Key Features Demonstrated:");
-  console.log("   ✓ Multi-asset futures contracts");
-  console.log("   ✓ Long and short positions");
-  console.log("   ✓ Encrypted position data");
-  console.log("   ✓ Settlement mechanisms");
-  console.log("   ✓ Position tracking");
-  console.log("   ✓ Time-based settlements");
-  console.log();
-
-  if (network === "sepolia") {
-    console.log("🔗 View on Etherscan:");
-    console.log(`   https://sepolia.etherscan.io/address/${contractAddress}`);
-    console.log();
-  }
-
-  console.log("==================================================\n");
+/**
+ * Helper function to wait
+ */
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Load or deploy contract
+ */
+async function getContract() {
+  const network = hre.network.name;
+  const deploymentsDir = path.join(__dirname, "..", "deployments");
+  const deploymentPath = path.join(
+    deploymentsDir,
+    `${network}-deployment.json`
+  );
+
+  let contract, contractAddress;
+
+  // Check if contract is already deployed
+  if (fs.existsSync(deploymentPath)) {
+    console.log("📋 Loading existing deployment...");
+    const deploymentInfo = JSON.parse(fs.readFileSync(deploymentPath, "utf8"));
+    contractAddress = deploymentInfo.contractAddress;
+    contract = await hre.ethers.getContractAt(
+      "AnonymousLegalConsultation",
+      contractAddress
+    );
+    console.log(`✅ Contract loaded: ${contractAddress}\n`);
+  } else {
+    console.log("🚀 No existing deployment found. Deploying new contract...\n");
+    const AnonymousLegalConsultation = await hre.ethers.getContractFactory(
+      "AnonymousLegalConsultation"
+    );
+    contract = await AnonymousLegalConsultation.deploy();
+    await contract.waitForDeployment();
+    contractAddress = await contract.getAddress();
+    console.log(`✅ Contract deployed: ${contractAddress}\n`);
+
+    // Save deployment info
+    const [deployer] = await hre.ethers.getSigners();
+    const deploymentInfo = {
+      network: network,
+      contractName: "AnonymousLegalConsultation",
+      contractAddress: contractAddress,
+      deployer: deployer.address,
+      deploymentTime: new Date().toISOString(),
+    };
+
+    if (!fs.existsSync(deploymentsDir)) {
+      fs.mkdirSync(deploymentsDir, { recursive: true });
+    }
+    fs.writeFileSync(deploymentPath, JSON.stringify(deploymentInfo, null, 2));
+  }
+
+  return { contract, contractAddress };
+}
+
+/**
+ * Display simulation header
+ */
+function displayHeader(title) {
+  console.log("\n" + "═".repeat(70));
+  console.log(`  ${title}`);
+  console.log("═".repeat(70) + "\n");
+}
+
+/**
+ * Main simulation
+ */
+async function main() {
+  displayHeader("🎭 LEGAL CONSULTATION PLATFORM SIMULATION");
+
+  const [admin, client1, client2, lawyer1, lawyer2, lawyer3] =
+    await hre.ethers.getSigners();
+
+  console.log("👥 Simulation Accounts:");
+  console.log("─".repeat(70));
+  console.log(`Admin:   ${admin.address}`);
+  console.log(`Client1: ${client1.address}`);
+  console.log(`Client2: ${client2.address}`);
+  console.log(`Lawyer1: ${lawyer1.address}`);
+  console.log(`Lawyer2: ${lawyer2.address}`);
+  console.log(`Lawyer3: ${lawyer3.address}`);
+  console.log("─".repeat(70));
+
+  // Get contract
+  const { contract, contractAddress } = await getContract();
+
+  // Phase 1: Register Lawyers
+  displayHeader("⚖️  PHASE 1: LAWYER REGISTRATION");
+
+  const lawyers = [lawyer1, lawyer2, lawyer3];
+  const lawyerIds = [];
+
+  for (let i = 0; i < 3; i++) {
+    console.log(`${i + 1}. Registering ${SAMPLE_LAWYERS[i].name}...`);
+    try {
+      const tx = await contract
+        .connect(lawyers[i])
+        .registerLawyer(SAMPLE_LAWYERS[i].specialty);
+      const receipt = await tx.wait();
+
+      const event = receipt.logs.find(
+        (log) => log.fragment && log.fragment.name === "LawyerRegistered"
+      );
+      if (event) {
+        lawyerIds.push(Number(event.args[0]));
+        console.log(
+          `   ✅ Registered - Lawyer ID: ${event.args[0]} (Specialty: ${
+            LEGAL_CATEGORIES[SAMPLE_LAWYERS[i].specialty]
+          })`
+        );
+      }
+    } catch (error) {
+      console.log(`   ❌ Error: ${error.message}`);
+    }
+    await wait(1000);
+  }
+
+  // Phase 2: Verify Lawyers (Admin action)
+  displayHeader("✅ PHASE 2: LAWYER VERIFICATION");
+
+  for (const lawyerId of lawyerIds) {
+    console.log(`${lawyerId}. Verifying Lawyer ID ${lawyerId}...`);
+    try {
+      const tx = await contract.connect(admin).verifyLawyer(lawyerId);
+      await tx.wait();
+      console.log(`   ✅ Lawyer ${lawyerId} verified`);
+    } catch (error) {
+      console.log(`   ❌ Error: ${error.message}`);
+    }
+    await wait(500);
+  }
+
+  // Phase 3: Submit Consultations
+  displayHeader("📝 PHASE 3: CLIENT CONSULTATIONS");
+
+  const clients = [client1, client1, client2, client2, client1];
+  const consultationIds = [];
+
+  for (let i = 0; i < SAMPLE_CONSULTATIONS.length; i++) {
+    const consultation = SAMPLE_CONSULTATIONS[i];
+    console.log(`${i + 1}. Submitting consultation in ${LEGAL_CATEGORIES[consultation.categoryId]}...`);
+    console.log(`   Question: "${consultation.question}"`);
+
+    try {
+      const tx = await contract
+        .connect(clients[i])
+        .submitConsultation(
+          consultation.clientId,
+          consultation.categoryId,
+          consultation.question,
+          {
+            value: hre.ethers.parseEther(consultation.fee),
+          }
+        );
+      const receipt = await tx.wait();
+
+      const event = receipt.logs.find(
+        (log) => log.fragment && log.fragment.name === "ConsultationSubmitted"
+      );
+      if (event) {
+        consultationIds.push(Number(event.args[0]));
+        console.log(
+          `   ✅ Submitted - Consultation ID: ${event.args[0]} (Fee: ${consultation.fee} ETH)`
+        );
+      }
+    } catch (error) {
+      console.log(`   ❌ Error: ${error.message}`);
+    }
+    await wait(1000);
+  }
+
+  // Phase 4: Assign Consultations
+  displayHeader("🔗 PHASE 4: CONSULTATION ASSIGNMENT");
+
+  for (let i = 0; i < consultationIds.length; i++) {
+    const consultationId = consultationIds[i];
+    const lawyerId = lawyerIds[i % lawyerIds.length]; // Round-robin assignment
+
+    console.log(`${i + 1}. Assigning Consultation ${consultationId} to Lawyer ${lawyerId}...`);
+
+    try {
+      const tx = await contract
+        .connect(admin)
+        .assignConsultation(consultationId, lawyerId);
+      await tx.wait();
+      console.log(`   ✅ Assigned successfully`);
+    } catch (error) {
+      console.log(`   ❌ Error: ${error.message}`);
+    }
+    await wait(500);
+  }
+
+  // Phase 5: Provide Responses
+  displayHeader("💬 PHASE 5: LAWYER RESPONSES");
+
+  const responses = [
+    "Based on your rental agreement, you may have grounds to negotiate early termination. Review the termination clause carefully.",
+    "In divorce proceedings with shared property, assets are typically divided equitably. Consult with a local attorney for specific state laws.",
+    "Termination without notice may violate labor laws. Document everything and consider filing a complaint with the labor board.",
+    "For startup incorporation, consider an LLC or C-Corp structure. Equity distribution should be formalized in a shareholders agreement.",
+    "For misdemeanor charges, you have the right to legal representation. Consider consulting a criminal defense attorney immediately.",
+  ];
+
+  for (let i = 0; i < consultationIds.length; i++) {
+    const consultationId = consultationIds[i];
+    const lawyerIndex = i % lawyers.length;
+
+    console.log(`${i + 1}. Lawyer ${lawyerIds[lawyerIndex]} responding to Consultation ${consultationId}...`);
+
+    try {
+      const tx = await contract
+        .connect(lawyers[lawyerIndex])
+        .provideResponse(consultationId, responses[i]);
+      await tx.wait();
+      console.log(`   ✅ Response provided`);
+    } catch (error) {
+      console.log(`   ❌ Error: ${error.message}`);
+    }
+    await wait(1000);
+  }
+
+  // Phase 6: Display Final Statistics
+  displayHeader("📊 FINAL STATISTICS");
+
+  const stats = await contract.getSystemStats();
+
+  console.log("Platform Statistics:");
+  console.log("─".repeat(70));
+  console.log(`Total Consultations:  ${stats[0]}`);
+  console.log(`Total Lawyers:        ${stats[1]}`);
+  console.log(`Verified Lawyers:     ${stats[2]}`);
+  console.log(`Contract Balance:     ${hre.ethers.formatEther(await hre.ethers.provider.getBalance(contractAddress))} ETH`);
+  console.log("─".repeat(70));
+
+  console.log("\n📋 Consultation Details:");
+  console.log("─".repeat(70));
+
+  for (const consultationId of consultationIds) {
+    try {
+      const details = await contract.getConsultationDetails(consultationId);
+      console.log(`\nConsultation #${consultationId}:`);
+      console.log(`  Status: ${details[4] ? "Resolved ✅" : "Pending ⏳"}`);
+      console.log(`  Fee: ${hre.ethers.formatEther(details[3])} ETH`);
+      console.log(`  Timestamp: ${new Date(Number(details[2]) * 1000).toLocaleString()}`);
+    } catch (error) {
+      console.log(`  Error retrieving consultation ${consultationId}`);
+    }
+  }
+
+  console.log("\n" + "─".repeat(70));
+
+  console.log("\n📋 Lawyer Profiles:");
+  console.log("─".repeat(70));
+
+  for (const lawyerId of lawyerIds) {
+    try {
+      const profile = await contract.getLawyerProfile(lawyerId);
+      console.log(`\nLawyer #${lawyerId}:`);
+      console.log(`  Consultations Handled: ${profile[0]}`);
+      console.log(`  Verified: ${profile[1] ? "Yes ✅" : "No ❌"}`);
+      console.log(`  Active: ${profile[2] ? "Yes ✅" : "No ❌"}`);
+    } catch (error) {
+      console.log(`  Error retrieving lawyer ${lawyerId}`);
+    }
+  }
+
+  console.log("\n" + "─".repeat(70));
+
+  displayHeader("✨ SIMULATION COMPLETED SUCCESSFULLY");
+
+  console.log("📝 Summary:");
+  console.log(`   • ${lawyerIds.length} lawyers registered and verified`);
+  console.log(`   • ${consultationIds.length} consultations submitted`);
+  console.log(`   • ${consultationIds.length} consultations assigned and resolved`);
+  console.log(`   • Contract Address: ${contractAddress}`);
+  console.log("");
+}
+
+// Execute simulation
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("\n❌ Simulation failed:");
+    console.error("❌ Simulation failed:");
     console.error(error);
     process.exit(1);
   });
-
-module.exports = main;

@@ -2,106 +2,120 @@ const hre = require("hardhat");
 const fs = require("fs");
 const path = require("path");
 
+/**
+ * Verify AnonymousLegalConsultation Contract on Etherscan
+ *
+ * This script verifies the deployed contract on Etherscan
+ * using the deployment information saved during deployment.
+ */
 async function main() {
-  console.log("\n==================================================");
-  console.log("  Contract Verification on Etherscan");
-  console.log("==================================================\n");
+  console.log("🔍 Starting contract verification...\n");
 
   const network = hre.network.name;
 
+  // Check if network supports verification
   if (network === "hardhat" || network === "localhost") {
-    console.log("⚠️  Cannot verify contracts on local network");
-    console.log("   Please deploy to a public testnet or mainnet");
+    console.log("⚠️  Cannot verify contracts on local networks");
+    console.log("   Please use sepolia or mainnet for verification");
     return;
   }
+
+  console.log("📋 Verification Configuration:");
+  console.log("─".repeat(50));
+  console.log(`Network: ${network}`);
+  console.log("─".repeat(50));
+  console.log("");
 
   // Load deployment information
-  const deploymentFile = path.join(__dirname, "..", "deployments", `${network}-deployment.json`);
+  const deploymentsDir = path.join(__dirname, "..", "deployments");
+  const deploymentPath = path.join(
+    deploymentsDir,
+    `${network}-deployment.json`
+  );
 
-  if (!fs.existsSync(deploymentFile)) {
-    console.error("❌ Deployment file not found:", deploymentFile);
-    console.log("\n💡 Please deploy the contract first:");
-    console.log(`   npm run deploy`);
-    return;
+  if (!fs.existsSync(deploymentPath)) {
+    throw new Error(
+      `❌ Deployment file not found: ${deploymentPath}\n` +
+        `   Please deploy the contract first using:\n` +
+        `   npx hardhat run scripts/deploy.js --network ${network}`
+    );
   }
 
-  const deployment = JSON.parse(fs.readFileSync(deploymentFile, "utf8"));
+  // Read deployment information
+  const deploymentInfo = JSON.parse(fs.readFileSync(deploymentPath, "utf8"));
+  const contractAddress = deploymentInfo.contractAddress;
+  const constructorArgs = deploymentInfo.constructorArgs || [];
 
-  console.log("Verification Information:");
-  console.log("- Network:", network);
-  console.log("- Contract:", deployment.contractName);
-  console.log("- Address:", deployment.contractAddress);
-  console.log("\n--------------------------------------------------\n");
+  console.log("📍 Contract Information:");
+  console.log("─".repeat(50));
+  console.log(`Contract Name:    ${deploymentInfo.contractName}`);
+  console.log(`Contract Address: ${contractAddress}`);
+  console.log(`Deployer:         ${deploymentInfo.deployer}`);
+  console.log(`Deployment Time:  ${deploymentInfo.deploymentTime}`);
+  console.log("─".repeat(50));
+  console.log("");
 
+  // Verify contract
   try {
-    console.log("📤 Submitting contract for verification...\n");
+    console.log("⏳ Submitting contract for verification...");
+    console.log("   This may take a few moments...\n");
 
     await hre.run("verify:verify", {
-      address: deployment.contractAddress,
-      constructorArguments: [],
-      contract: "contracts/ConfidentialFuturesTrading.sol:ConfidentialFuturesTrading",
+      address: contractAddress,
+      constructorArguments: constructorArgs,
     });
 
-    console.log("\n✅ Contract verified successfully!");
+    console.log("✅ Contract verified successfully!\n");
 
+    // Update deployment info with verification status
+    deploymentInfo.verified = true;
+    deploymentInfo.verificationTime = new Date().toISOString();
+    fs.writeFileSync(deploymentPath, JSON.stringify(deploymentInfo, null, 2));
+
+    console.log("📝 Verification Information:");
+    console.log("─".repeat(50));
+    console.log("Status: Verified ✅");
+    console.log(`Time:   ${deploymentInfo.verificationTime}`);
+    console.log("─".repeat(50));
+    console.log("");
+
+    // Display Etherscan link
     if (network === "sepolia") {
-      console.log("\n📊 View verified contract:");
-      console.log(`   https://sepolia.etherscan.io/address/${deployment.contractAddress}#code`);
+      console.log("🔗 View Verified Contract:");
+      console.log(
+        `   https://sepolia.etherscan.io/address/${contractAddress}#code`
+      );
+      console.log("");
     }
 
-    // Update deployment file with verification status
-    deployment.verified = true;
-    deployment.verifiedAt = new Date().toISOString();
-    fs.writeFileSync(deploymentFile, JSON.stringify(deployment, null, 2));
-
-    console.log("\n==================================================");
-    console.log("  Verification Complete");
-    console.log("==================================================\n");
-
+    console.log("✨ You can now interact with the verified contract!");
   } catch (error) {
     if (error.message.includes("Already Verified")) {
-      console.log("✅ Contract is already verified!");
+      console.log("ℹ️  Contract is already verified on Etherscan\n");
 
       if (network === "sepolia") {
-        console.log("\n📊 View verified contract:");
-        console.log(`   https://sepolia.etherscan.io/address/${deployment.contractAddress}#code`);
+        console.log("🔗 View Verified Contract:");
+        console.log(
+          `   https://sepolia.etherscan.io/address/${contractAddress}#code`
+        );
+        console.log("");
       }
-    } else if (error.message.includes("does not have bytecode")) {
-      console.error("\n❌ Verification failed:");
-      console.error("   Contract not found at the specified address");
-      console.error("   Please check if the deployment was successful");
-    } else if (error.message.includes("API key")) {
-      console.error("\n❌ Verification failed:");
-      console.error("   Invalid or missing Etherscan API key");
-      console.error("   Please add ETHERSCAN_API_KEY to your .env file");
     } else {
-      console.error("\n❌ Verification failed:");
-      console.error(error.message);
-
-      console.log("\n💡 Troubleshooting tips:");
-      console.log("   1. Ensure your Etherscan API key is valid");
-      console.log("   2. Wait a few moments after deployment before verifying");
-      console.log("   3. Check that the constructor arguments are correct");
-      console.log("   4. Verify the contract address is correct");
+      throw error;
     }
   }
-
-  console.log("\n==================================================");
-  console.log("  Next Steps");
-  console.log("==================================================");
-  console.log("\n1. Interact with the verified contract:");
-  console.log("   npm run interact");
-  console.log("\n2. Run simulation tests:");
-  console.log("   npm run simulate");
-  console.log("\n==================================================\n");
 }
 
+// Execute verification
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("\n❌ Verification script failed:");
-    console.error(error);
+    console.error("❌ Verification failed:");
+    console.error(error.message);
+    console.log("\n💡 Troubleshooting tips:");
+    console.log("   1. Check if ETHERSCAN_API_KEY is set in .env file");
+    console.log("   2. Ensure the contract was deployed recently");
+    console.log("   3. Wait a few blocks after deployment before verifying");
+    console.log("   4. Verify constructor arguments match deployment");
     process.exit(1);
   });
-
-module.exports = main;
