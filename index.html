@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confidential Futures Trading Platform</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <meta name="description" content="Confidential Futures Trading Platform - Trade futures contracts with encrypted positions using FHE technology">
+    <meta name="keywords" content="futures trading, blockchain, confidential trading, FHE, encrypted trading">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Confidential Futures Trading</h1>
+            <div class="connection-status">
+                <span id="connectionStatus">Not Connected</span>
+                <button id="connectWallet" class="btn btn-primary">Connect Wallet</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Wallet Connection Section -->
+            <section id="walletSection" class="card">
+                <h2>Wallet Information</h2>
+                <div class="wallet-info">
+                    <p><strong>Address:</strong> <span id="walletAddress">Not connected</span></p>
+                    <p><strong>Network:</strong> <span id="networkName">Unknown</span></p>
+                    <p><strong>Balance:</strong> <span id="ethBalance">0 ETH</span></p>
+                </div>
+            </section>
+
+            <!-- Contract Management Section (Owner Only) -->
+            <section id="ownerSection" class="card" style="display: none;">
+                <h2>Contract Management (Owner Only)</h2>
+                <div class="owner-controls">
+                    <div class="form-group">
+                        <label for="underlyingAsset">Create New Futures Contract</label>
+                        <input type="text" id="underlyingAsset" placeholder="e.g., BTC, ETH, OIL" class="form-control">
+                        <button id="createContract" class="btn btn-success">Create Contract</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contractIdPrice">Set Contract Price</label>
+                        <input type="number" id="contractIdPrice" placeholder="Contract ID" class="form-control">
+                        <input type="number" id="initialPrice" placeholder="Initial Price" class="form-control">
+                        <button id="setPrice" class="btn btn-success">Set Price</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="settleContractId">Settle Contract</label>
+                        <input type="number" id="settleContractId" placeholder="Contract ID" class="form-control">
+                        <input type="number" id="finalPrice" placeholder="Final Price" class="form-control">
+                        <button id="settleContract" class="btn btn-warning">Settle Contract</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Trading Section -->
+            <section id="tradingSection" class="card">
+                <h2>Open Trading Position</h2>
+                <div class="trading-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tradingContractId">Contract ID</label>
+                            <input type="number" id="tradingContractId" placeholder="Contract ID" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="entryPrice">Entry Price</label>
+                            <input type="number" id="entryPrice" placeholder="Entry Price" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="tradeAmount">Amount</label>
+                            <input type="number" id="tradeAmount" placeholder="Trade Amount" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="collateral">Collateral</label>
+                            <input type="number" id="collateral" placeholder="Collateral Amount" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Position Type</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="positionType" value="true" checked> Long</label>
+                            <label><input type="radio" name="positionType" value="false"> Short</label>
+                        </div>
+                    </div>
+                    <button id="openPosition" class="btn btn-primary">Open Position</button>
+                </div>
+            </section>
+
+            <!-- Contract Information Section -->
+            <section id="contractsSection" class="card">
+                <h2>Active Contracts</h2>
+                <div class="contracts-controls">
+                    <input type="number" id="queryContractId" placeholder="Contract ID" class="form-control">
+                    <button id="queryContract" class="btn btn-info">Query Contract</button>
+                    <button id="refreshContracts" class="btn btn-secondary">Refresh All</button>
+                </div>
+                <div id="contractsList" class="contracts-list">
+                    <p>No contracts loaded. Use the query button to check specific contracts.</p>
+                </div>
+            </section>
+
+            <!-- Position Information Section -->
+            <section id="positionsSection" class="card">
+                <h2>My Positions</h2>
+                <div class="position-controls">
+                    <input type="number" id="positionContractId" placeholder="Contract ID" class="form-control">
+                    <button id="queryPosition" class="btn btn-info">Check Position</button>
+                </div>
+                <div id="positionsList" class="positions-list">
+                    <p>No positions loaded. Use the check button to view your positions.</p>
+                </div>
+            </section>
+
+            <!-- Settlement Information Section -->
+            <section id="settlementSection" class="card">
+                <h2>Settlement Information</h2>
+                <div class="settlement-info">
+                    <button id="checkSettlement" class="btn btn-info">Check Settlement Time</button>
+                    <p id="settlementTime">Settlement information not loaded</p>
+                    <button id="requestWithdrawal" class="btn btn-success">Request Withdrawal</button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Transaction Status -->
+        <div id="transactionStatus" class="transaction-status" style="display: none;">
+            <div class="status-content">
+                <span id="statusMessage">Processing...</span>
+                <button id="closeStatus" class="btn-close">&times;</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
