@@ -18,6 +18,9 @@ This repository is a **production-ready FHEVM example** demonstrating privacy-pr
 **Category**: Privacy-Preserving Smart Contracts with Multiple FHE Patterns
 **Status**: ✅ Complete & Production-Ready
 
+Live Demo: https://fhe-legal-consultation-platform.vercel.app/
+Video : https://streamable.com/jzalpa FHE Legal Consultation Platform.mp4
+
 ---
 
 ## 🎯 Key Achievements
