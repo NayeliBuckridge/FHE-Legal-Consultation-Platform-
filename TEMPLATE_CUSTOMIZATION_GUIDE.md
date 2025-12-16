@@ -506,7 +506,7 @@ Before submission, ensure:
 
 Before submitting to Bounty Track:
 
-- [ ] Project name follows naming conventions (no dapp+numbers, , case+numbers)
+- [ ] Project name follows naming conventions (no , , )
 - [ ] Smart contract demonstrates clear FHE concept
 - [ ] Minimum 20 test cases (40+ recommended)
 - [ ] 80%+ code coverage
