@@ -1,0 +1,31 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# Run linters and formatters
+echo "📝 Checking code formatting..."
+npm run prettier:check || {
+  echo "❌ Prettier check failed. Run 'npm run prettier' to fix formatting."
+  exit 1
+}
+
+echo "🔍 Running ESLint..."
+npm run lint || {
+  echo "❌ ESLint check failed. Run 'npm run lint:fix' to fix issues."
+  exit 1
+}
+
+echo "🔍 Running Solhint..."
+npm run lint:solidity || {
+  echo "❌ Solhint check failed. Fix Solidity linting issues."
+  exit 1
+}
+
+echo "🔒 Running security checks..."
+npm audit --audit-level=moderate || {
+  echo "⚠️  Security vulnerabilities found. Review and fix with 'npm audit fix'"
+  exit 1
+}
+
+echo "✅ All pre-commit checks passed!"
