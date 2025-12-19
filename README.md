@@ -20,7 +20,7 @@ This repository is a **production-ready FHEVM example** demonstrating privacy-pr
 
 Live Demo: https://fhe-legal-consultation-platform.vercel.app/
 
-Video : https://youtu.be/B-8QtnVMwEc demo.mp4
+Video : https://youtu.be/vmFhlnkoZZo demo2.mp4
 
 ---
 
